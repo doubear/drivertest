@@ -6,8 +6,11 @@
 #include<linux/vmalloc.h>
 #include<linux/mm.h>
 #include<linux/dma-mapping.h>
+#include<linux/percpu.h>
 static char *whom = "world";
 static int howmany = 1;
+DEFINE_PER_CPU(int,testcpu);
+
 module_param(howmany,int,S_IRUGO);
 module_param(whom,charp,S_IRUGO);
 
@@ -68,6 +71,13 @@ static int __init hello_init(void)
 	dma_free_coherent(NULL,1024,normal_virt,phys);
 	*/
 	vfree(vmalloc_virt);
+	
+	/*test percpu*/
+//	get_cpu_var(testcpu) = 10086 ;
+//	put_cpu_var(testcpu);
+	per_cpu(testcpu,1) = 10086;
+	per_cpu(testcpu,0) = 10010;
+	printk(KERN_ALERT "CPU0:%d  CPU1:%d\n",per_cpu(testcpu,1),per_cpu(testcpu,0));
 	
 	return 0;
 }
