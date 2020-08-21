@@ -3,6 +3,9 @@
 #include<linux/sched.h>
 #include<linux/moduleparam.h>
 #include<linux/slab.h>
+#include<linux/vmalloc.h>
+#include<linux/mm.h>
+#include<linux/dma-mapping.h>
 static char *whom = "world";
 static int howmany = 1;
 module_param(howmany,int,S_IRUGO);
@@ -27,7 +30,8 @@ void slab_ctor(void *cachep)
 static int __init hello_init(void)
 {
 	static int i = 0;	
-	unsigned char * normal_virt,*phys;
+	unsigned char * normal_virt,*phys,*vmalloc_virt;
+	unsigned long pfn;
 	printk(KERN_ALERT "test hello module ok\n");
 	printk(KERN_ALERT "the process is %s pid %i\n",current->comm,current->pid);
 	for(i = 0;i<howmany;i++){
@@ -47,9 +51,24 @@ static int __init hello_init(void)
 	printk(KERN_ALERT "slab_ctor is called object:%d\n",n);
 	object2 = kmem_cache_alloc(test_cachep,GFP_KERNEL);
 	kmem_cache_free(test_cachep,object1);
-	kmem_cache_free(test_cachep,object2);
-		
+	kmem_cache_free(test_cachep,object2);	
 	kmem_cache_destroy(test_cachep);
+	
+	/* test vmalloc*/
+	vmalloc_virt = vmalloc(128);
+	pfn = vmalloc_to_pfn(vmalloc_virt);
+	phys = (pfn<<12)|((unsigned long)vmalloc_virt & 0xfff);
+	normal_virt = phys_to_virt(phys);
+	printk(KERN_ALERT "vmalloc:%p,phys:%p,normal:%p\n",vmalloc_virt,phys,normal_virt);
+	
+	/*dma-vmalloc*/
+	/*
+	normal_virt = dma_alloc_coherent(NULL,1024,&phys,GFP_KERNEL);
+	printk(KERN_ALERT "dma:vmalloc:%p,normal_virt = %p\n",vmalloc_virt,phys);
+	dma_free_coherent(NULL,1024,normal_virt,phys);
+	*/
+	vfree(vmalloc_virt);
+	
 	return 0;
 }
 static void __exit hello_exit(void)
