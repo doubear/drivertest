@@ -1,5 +1,6 @@
 #include<linux/init.h>
 #include<linux/module.h>
+#include<linux/of.h>
 #include<linux/sched.h>
 #include<linux/moduleparam.h>
 #include<linux/slab.h>
@@ -7,6 +8,8 @@
 #include<linux/mm.h>
 #include<linux/dma-mapping.h>
 #include<linux/percpu.h>
+
+
 static char *whom = "world";
 static int howmany = 1;
 DEFINE_PER_CPU(int,testcpu);
@@ -33,8 +36,11 @@ void slab_ctor(void *cachep)
 static int __init hello_init(void)
 {
 	static int i = 0;	
-	unsigned char * normal_virt,*phys,*vmalloc_virt;
+	unsigned char * normal_virt,*vmalloc_virt;
+	phys_addr_t phys;
 	unsigned long pfn;
+//	struct device_node *node;
+	
 	printk(KERN_ALERT "test hello module ok\n");
 	printk(KERN_ALERT "the process is %s pid %i\n",current->comm,current->pid);
 	for(i = 0;i<howmany;i++){
@@ -43,7 +49,7 @@ static int __init hello_init(void)
 	/*test kmalloc*/
 	normal_virt = kmalloc(64,GFP_KERNEL);
 	phys = virt_to_phys(normal_virt);
-	printk(KERN_ALERT "kmalloc virt: %p <==>phys:%p\n",normal_virt,phys);
+	printk(KERN_ALERT "kmalloc virt: %p <==>phys:%16.16llx\n",normal_virt,phys);
 	kfree(normal_virt);
 
 	/*test kmem_cache*/
@@ -60,9 +66,9 @@ static int __init hello_init(void)
 	/* test vmalloc*/
 	vmalloc_virt = vmalloc(128);
 	pfn = vmalloc_to_pfn(vmalloc_virt);
-	phys = (pfn<<12)|((unsigned long)vmalloc_virt & 0xfff);
+	phys = (pfn<<12)|((unsigned long)vmalloc_virt & 0xffffffff);
 	normal_virt = phys_to_virt(phys);
-	printk(KERN_ALERT "vmalloc:%p,phys:%p,normal:%p\n",vmalloc_virt,phys,normal_virt);
+	printk(KERN_ALERT "vmalloc:%p,phys:%16.16llx,normal:%p\n",vmalloc_virt,phys,normal_virt);
 	
 	/*dma-vmalloc*/
 	/*
@@ -78,7 +84,14 @@ static int __init hello_init(void)
 	per_cpu(testcpu,1) = 10086;
 	per_cpu(testcpu,0) = 10010;
 	printk(KERN_ALERT "CPU0:%d  CPU1:%d\n",per_cpu(testcpu,1),per_cpu(testcpu,0));
-	
+/* useless*/
+/*	node = of_find_all_nodes(NULL);
+	while(node)
+	{
+		node = of_find_all_nodes(node);
+		printk(KERN_ALERT "%s\n",node->name);
+	}
+*/
 	return 0;
 }
 static void __exit hello_exit(void)
