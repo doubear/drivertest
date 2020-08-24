@@ -8,11 +8,20 @@
 #include<linux/mm.h>
 #include<linux/dma-mapping.h>
 #include<linux/percpu.h>
-
+#include<linux/interrupt.h>
+#include<linux/kernel.h>
 
 static char *whom = "world";
 static int howmany = 1;
 DEFINE_PER_CPU(int,testcpu);
+/*interrupt test*/
+static int irq = 7;
+char * interface = "hello";
+static irqreturn_t myirq_handler(int irq, void *dev)
+{
+	printk(KERN_ALERT "%d irq working\n",irq);
+	return IRQ_NONE;
+}
 
 module_param(howmany,int,S_IRUGO);
 module_param(whom,charp,S_IRUGO);
@@ -92,6 +101,15 @@ static int __init hello_init(void)
 		printk(KERN_ALERT "%s\n",node->name);
 	}
 */
+	/*test irq*/
+	if(request_irq(irq,myirq_handler,IRQF_SHARED,interface,&irq))
+	{
+		printk(KERN_ALERT "%s can't request irq:%d\n",interface,irq);
+			
+	}else{
+		printk(KERN_ALERT "%s request %d IRQ\n",interface,irq);
+	}
+	free_irq(irq,&irq);
 	return 0;
 }
 static void __exit hello_exit(void)
